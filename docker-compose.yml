@@ -1,0 +1,9 @@
+version: '3.7'
+
+services:
+    google_image_downloader:
+        build: .
+        command: bash -c "python3.7 /app/main.py -o /images flags"
+        volumes:
+            - ./images:/images
+            - ./google_image_downloader.py:/app/main.py

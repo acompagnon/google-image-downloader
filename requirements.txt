@@ -1,0 +1,5 @@
+pytest-playwright==0.3.0
+fake_headers==1.0.2
+requests==2.24.0
+beautifulsoup4==4.10.0
+python_magic==0.4.24
