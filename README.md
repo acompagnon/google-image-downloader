@@ -1,4 +1,4 @@
-# GoogleImageDownloader
+# GoogleImageDownloader :camera:
 
 Python script to **download Google images** from a given query string
 
