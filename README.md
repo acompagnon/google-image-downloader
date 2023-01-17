@@ -2,6 +2,8 @@
 
 Python script to **download Google images** from a given query string
 
+![rtx3090](./documentation/rtx3090.gif)
+
 ## Install
 
 ### Docker
