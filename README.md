@@ -14,8 +14,9 @@ docker-compose up -d && docker-compose logs -f
 ### Local
 
 ```bash
-python3.7 -m pip install -r requirements.txt
-python3.7 -m playwright install
+python3 -m pip install -r requirements.txt
+python3 -m playwright install
+python3 -m playwright install-deps
 ```
 
 ## Use
@@ -25,9 +26,7 @@ python3.7 google_image_downloader.py -h
 ```
 
 ```bash
-usage: google_image_downloader.py [-h] [--limit LIMIT] [--output OUTPUT] [--proxy-server PROXY_SERVER] [--headless HEADLESS]
-                                  [--verbose]
-                                  search_string
+usage: google_image_downloader.py [-h] [--limit LIMIT] [--output OUTPUT] [--proxy-server PROXY_SERVER] [--no-headless] [--verbose] search_string
 
 positional arguments:
   search_string         Google image query (ex: 'flag')
@@ -40,7 +39,7 @@ optional arguments:
                         Ouptut directory
   --proxy-server PROXY_SERVER
                         Proxy server (ex: 'http://myproxy:3128')
-  --headless HEADLESS   Display playwright window, this option does not work inside Docker
+  --no-headless         Display playwright window, this option does not work inside Docker
   --verbose, -v         Set logging level to DEBUG
 ```
 
