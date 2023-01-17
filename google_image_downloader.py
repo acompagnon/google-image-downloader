@@ -234,10 +234,9 @@ def main():
         help="Proxy server (ex: 'http://myproxy:3128')",
     )
     parser.add_argument(
-        "--headless",
-        default=True,
-        type=bool,
+        "--no-headless",
         help="Display playwright window, this option does not work inside Docker",
+        action="store_true",
     )
     parser.add_argument(
         "--verbose", "-v", help="Set logging level to DEBUG", action="store_true"
@@ -250,7 +249,9 @@ def main():
     logging.info(f"GoogleImageDownloader.main(): Images will be saved in {args.output}")
 
     downloader = GoogleImageDownloader(
-        output_path=args.output, proxy=args.proxy_server, headless=args.headless
+        output_path=args.output,
+        proxy=args.proxy_server,
+        headless=not args.no_headless,
     )
 
     try:
