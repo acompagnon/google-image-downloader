@@ -14,7 +14,7 @@ docker-compose up -d && docker-compose logs -f
 ### Local
 
 ```bash
-python3 -m pip install -r requirements.txt
+python3 -m pip install -r requirements.txt  # >=python3.7
 python3 -m playwright install
 python3 -m playwright install-deps
 ```
