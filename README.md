@@ -48,7 +48,7 @@ optional arguments:
 ## Example
 
 ```bash
-python3.7 google-image-downloader.py "flag" --limit 42
+python3 google-image-downloader.py "flag" --limit 42
 ```
 
 ![cli](https://user-images.githubusercontent.com/93054660/138571704-8d9a2701-05ed-4adb-acec-9b6fc827c4b1.gif)
