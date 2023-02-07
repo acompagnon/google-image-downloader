@@ -30,10 +30,10 @@ docker-compose up -d google_image_downloader_api && docker-compose logs -f
 
 Then go to http://172.17.0.1:4242/docs to see Swagger
 
-## Use
+## Usage
 
 ```bash
-python3 google_image_downloader.py -h
+python3 backend/app/google_image_downloader.py -h
 ```
 
 ```bash
