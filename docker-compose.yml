@@ -1,9 +1,28 @@
-version: '3.7'
+version: '2'
 
 services:
     google_image_downloader:
+        image: acompagnon/google_image_downloader:latest
         build: .
-        command: bash -c "python3.9 /app/main.py -o /images flags"
+        command: bash -c "python3.9 /app/main.py -o /images flag --limit 42"
         volumes:
             - ./images:/images
-            - ./google_image_downloader.py:/app/main.py
+            - ./backend/app/google_image_downloader.py:/app/main.py
+            - ./backend/app/logger.py:/app/logger.py
+        environment:
+            - LOGDIR='/logs'
+
+    google_image_downloader_api:
+        build:
+            context: ./backend
+        restart: always
+        volumes:
+            - ./backend/app:/backend/app
+        ports:
+            - '4242:8888'
+        healthcheck:
+            test: curl --fail http://localhost:8888 || exit 1
+            interval: 10s
+            retries: 5
+            start_period: 20s
+            timeout: 10s

@@ -2,12 +2,11 @@
 # !/usr/bin/python3
 
 import base64
-import logging
 import argparse
 import traceback
 from time import sleep
 from pathlib import Path
-from typing import Dict, Any, Iterator
+from typing import Dict, Any, Iterator, Tuple
 from mimetypes import guess_extension, guess_type
 
 import requests
@@ -17,6 +16,11 @@ from magic import from_buffer
 from fake_headers import Headers
 from playwright.sync_api import sync_playwright
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+try:
+    from logger import Logger
+except ModuleNotFoundError:
+    from app.logger import Logger
 
 
 class GoogleImageDownloader:
@@ -43,11 +47,9 @@ class GoogleImageDownloader:
     ) -> None:
         """Open a new playwright"""
 
-        logging.info(f"GoogleImageDownloader.set_new_playwright(): Initialize")
+        Logger.info(f"set_new_playwright(): Initialize")
         if self.proxy:
-            logging.info(
-                f"GoogleImageDownloader.set_new_playwright(): Used proxy {self.proxy}"
-            )
+            Logger.info(f"set_new_playwright(): Used proxy {self.proxy}")
 
         self._browser = playwright.chromium.launch(
             headless=self.headless,
@@ -64,9 +66,7 @@ class GoogleImageDownloader:
             self._browser.close()
 
     def _detect_image_selector(self) -> str:
-        logging.info(
-            f"GoogleImageDownloader._detect_image_selector(): Retrieving image preview div"
-        )
+        Logger.info(f"_detect_image_selector(): Retrieving image preview div")
 
         layout = self._current_page.content()
         soup = BeautifulSoup(layout, "html.parser")
@@ -90,13 +90,13 @@ class GoogleImageDownloader:
         preview_link = soup.find("a", {"target": "_blank", "role": "link"})
         preview_parent = preview_link.parent if preview_link else None
         if not preview_parent or not preview_parent.attrs.get("class", []):
-            logging.critical(
-                f"GoogleImageDownloader._detect_image_selector(): Could not find selector, please open an issue"
+            Logger.critical(
+                f"_detect_image_selector(): Could not find selector, please open an issue"
             )
             return ""
 
-        logging.info(
-            f'GoogleImageDownloader._detect_image_selector(): Done : {preview_parent.attrs["class"][0]}'
+        Logger.info(
+            f'_detect_image_selector(): Done : {preview_parent.attrs["class"][0]}'
         )
         return preview_parent.attrs["class"][0]
 
@@ -105,19 +105,17 @@ class GoogleImageDownloader:
             if self._current_page is None:
                 self._current_page = self._browser.new_page()
 
-            logging.info(f"GoogleImageDownloader._navigate(): Loading {url}")
+            Logger.info(f"_navigate(): Loading {url}")
             self._current_page.goto(url, timeout=60000)
-            logging.info(f"GoogleImageDownloader._navigate(): OK")
+            Logger.info(f"_navigate(): OK")
         except (PlaywrightTimeoutError, Exception) as e:
-            logging.warning(
-                f"GoogleImageDownloader._navigate(): Could not load url {url} : {e}"
-            )
-            logging.warning(traceback.format_exc())
+            Logger.warning(f"_navigate(): Could not load url {url} : {e}")
+            Logger.warning(traceback.format_exc())
             return False
 
         return True
 
-    def download(self, link: str, count: int) -> None:
+    def download(self, link: str, count: int) -> Tuple[str, bytes]:
         # TODO filenames
         if link.startswith("data"):
             index = link.find("base64,")
@@ -125,9 +123,11 @@ class GoogleImageDownloader:
             extension = guess_extension(guess_type(b64_header)[0])
             extension = ".jpg" if not extension else extension
             img_data = base64.b64decode(link[index + 7 :])
-            with open(f"{self.output_path}/image_{count}{extension}", "wb") as fp:
-                fp.write(img_data)
-            return
+            img_filename = f"image_{count}{extension}"
+            if self.output_path:
+                with open(f"{self.output_path}/{img_filename}", "wb") as fp:
+                    fp.write(img_data)
+            return img_filename, img_data
 
         try:
             response = self.session.get(link)
@@ -136,20 +136,25 @@ class GoogleImageDownloader:
             requests.exceptions.SSLError,
             Exception,
         ) as e:
-            logging.warning(e)
-            return
+            Logger.warning(e)
+            return None, None
 
         if response.status_code == 200:
             content_type = response.headers.get("content-type", "")
             if not content_type:
-                return
+                return None, None
             extension = guess_extension(content_type)
             if not extension:
                 mime = from_buffer(response.content, mime=True)
                 extension = guess_extension(mime)
             extension = ".jpg" if not extension else extension
-            with open(f"{self.output_path}/image_{count}{extension}", "wb") as fp:
-                fp.write(response.content)
+            img_filename = f"image_{count}{extension}"
+            if self.output_path:
+                with open(f"{self.output_path}/{img_filename}", "wb") as fp:
+                    fp.write(response.content)
+            return img_filename, response.content
+
+        return None, None
 
     def crawl(self, selector_class: str, limit: int = 10) -> Iterator[str]:
         count = 0
@@ -160,11 +165,11 @@ class GoogleImageDownloader:
                     f'div[class="{selector_class}"]', timeout=1000
                 )
             except Exception as e:
-                logging.warning(f"GoogleImageDownloader.crawl(): {e}")
+                Logger.warning(f"crawl(): {e}")
                 break
             soup = BeautifulSoup(layout, "html.parser")
             image = soup.find("img")
-            logging.debug(f"image={image}")
+            Logger.debug(f"image={image}")
             link = image.attrs.get("src", "") if soup else ""
             if not link:
                 break
@@ -176,12 +181,13 @@ class GoogleImageDownloader:
             try:
                 self._current_page.press(selector_src, "ArrowRight")
             except Exception as e:
-                logging.warning(e)
+                Logger.warning(e)
                 selector_alt = f"img[alt=\"{image.attrs.get('alt')}\"]"
                 self._current_page.press(selector_alt, "ArrowRight")
             sleep(0.1)
 
-    def process(self, search: str = "", limit: int = -1) -> None:
+    def process(self, search: str = "", limit: int = -1) -> Iterator[bytes]:
+        Logger.info(f"process() : search={search}")
         # Load query
         url = f'https://www.google.fr/imghp?hl=en&q={"+".join(search.split(" "))}'
         success = self._navigate(url=url)
@@ -201,17 +207,17 @@ class GoogleImageDownloader:
         if not selector_class:
             return
 
-        images_src = self.crawl(selector_class=selector_class, limit=limit)
-        if images_src:
-            for i, image_src in enumerate(images_src):
-                self.download(link=image_src, count=i)
-                logging.info(
-                    f"\rGoogleImageDownloader.process(): {i + 1} images downloaded",
+        imgs_src = self.crawl(selector_class=selector_class, limit=limit)
+        if imgs_src:
+            for i, img_src in enumerate(imgs_src):
+                img_filename, img_bytes = self.download(link=img_src, count=i)
+                Logger.info(
+                    f"process(): {i + 1} images downloaded",
                 )
+                if img_filename and img_bytes:
+                    yield {"filename": img_filename, "data": img_bytes}
 
-        logging.info(
-            f"\nGoogleImageDownloader.process(): Done, images saved in {self.output_path}"
-        )
+        Logger.info(f"process(): Done")
 
 
 def main():
@@ -239,14 +245,12 @@ def main():
         action="store_true",
     )
     parser.add_argument(
-        "--verbose", "-v", help="Set logging level to DEBUG", action="store_true"
+        "--verbose", "-v", help="Set Logger level to DEBUG", action="store_true"
     )
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
-
     Path(args.output).mkdir(parents=True, exist_ok=True)
-    logging.info(f"GoogleImageDownloader.main(): Images will be saved in {args.output}")
+    Logger.info(f"main(): Images will be saved in {args.output}")
 
     downloader = GoogleImageDownloader(
         output_path=args.output,
@@ -257,11 +261,14 @@ def main():
     try:
         with sync_playwright() as plwght:
             downloader.set_new_playwright(plwght)
-            downloader.process(search=args.search_string, limit=args.limit)
+            images = downloader.process(search=args.search_string, limit=args.limit)
+            if images:
+                for _ in images:
+                    pass
             downloader.close_playwright()
     except Exception as e:
-        logging.error(f"GoogleImageDownloader.main(): {e}")
-        logging.error(traceback.format_exc())
+        Logger.error(f"main(): {e}")
+        Logger.error(traceback.format_exc())
 
 
 if __name__ == "__main__":

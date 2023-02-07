@@ -9,11 +9,11 @@ Python script to **download Google images** from a given query string
 ### Docker
 
 ```bash
-docker-compose build
-docker-compose up -d && docker-compose logs -f
+docker-compose build google_image_downloader # or docker compose build (depends on your docker version)
+docker-compose up -d google_image_downloader && docker-compose logs -f
 ```
 
-### Local
+### Local - Without Docker
 
 ```bash
 python3 -m pip install -r requirements.txt  # >=python3.7
@@ -21,10 +21,19 @@ python3 -m playwright install
 python3 -m playwright install-deps
 ```
 
+### New ! API mode (Docker + FastAPI)
+
+```bash
+docker-compose build # or docker compose build (depends on your docker version)
+docker-compose up -d google_image_downloader_api && docker-compose logs -f
+```
+
+Then go to http://172.17.0.1:4242/docs to see Swagger
+
 ## Use
 
 ```bash
-python3.7 google_image_downloader.py -h
+python3 google_image_downloader.py -h
 ```
 
 ```bash
@@ -48,7 +57,7 @@ optional arguments:
 ## Example
 
 ```bash
-python3.7 google-image-downloader.py "flag" --limit 42
+python3 backend/app/google_image_downloader.py "flag" --limit 42
 ```
 
 ![cli](https://user-images.githubusercontent.com/93054660/138571704-8d9a2701-05ed-4adb-acec-9b6fc827c4b1.gif)
